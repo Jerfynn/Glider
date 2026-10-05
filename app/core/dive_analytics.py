@@ -260,67 +260,70 @@ class DiveAnalyticsEngine:
 
     def get_summary_metrics(self) -> Dict[str, Any]:
         """
-        Computes the exact dashboard analytics metrics:
-        1. Dives: Total / Completed Dives
-        2. Power: Dive In (W), Dive Out (W), Max Power Consumed for One Dive (W)
-        3. Energy: Dive In (Wh), Dive Out (Wh), Max Energy Consumed for One Dive (Wh)
+        Computes the exact dashboard analytics metrics for the current/latest cycle:
+        - During Dive In: displays live Dive In power & energy.
+        - During Idle (between Dive In and Dive Out): retains Dive In power & energy!
+        - During Dive Out: displays retained Dive In power/energy AND live Dive Out power/energy.
+        - Upon Complete Dive (Dive In + Dive Out): displays both segments and complete totals.
+        - When the next cycle starts, it resets and starts clean for the new cycle!
         """
         completed_dives = len(self.history)
-        
-        # Determine current active dive count
         total_dives = completed_dives
         if self.current_dive is not None or self.active_segment is not None:
             total_dives = completed_dives + 1
 
-        # Power calculations (Maximum power consumed during dive in, dive out, and complete dive)
-        in_powers = [d["dive_in_max_power"] for d in self.history if d.get("dive_in_max_power") is not None]
-        out_powers = [d["dive_out_max_power"] for d in self.history if d.get("dive_out_max_power") is not None]
+        # Check latest context: current ongoing dive or last completed dive
+        cur_in = self.current_dive.get("in") if self.current_dive else None
+        cur_out = self.current_dive.get("out") if self.current_dive else None
+        
+        last_record = self.history[-1] if self.history else None
 
-        # Check if an active segment is currently giving live power
-        if self.active_segment:
+        # Determine Dive In Power & Energy
+        dive_in_power = None
+        dive_in_energy = None
+        if self.active_segment and self.active_segment.direction == "IN":
             active_powers = [p for _, p in self.active_segment.samples if p is not None]
-            if active_powers:
-                active_max = max(active_powers)
-                if self.active_segment.direction == "IN":
-                    in_powers.append(active_max)
-                else:
-                    out_powers.append(active_max)
+            dive_in_power = max(active_powers) if active_powers else None
+            dive_in_energy = self.active_segment.energy_wh
+        elif cur_in:
+            dive_in_power = cur_in.get("max_power")
+            dive_in_energy = cur_in.get("energy_wh")
+        elif last_record and not self.active_segment and not self.current_dive:
+            # Show completed cycle metrics until a new cycle starts
+            dive_in_power = last_record.get("dive_in_max_power")
+            dive_in_energy = last_record.get("dive_in_energy")
 
-        max_in_power = max(in_powers) if in_powers else None
-        max_out_power = max(out_powers) if out_powers else None
-
-        all_max_powers = [d["max_power"] for d in self.history if d.get("max_power") is not None]
-        if self.active_segment:
+        # Determine Dive Out Power & Energy
+        dive_out_power = None
+        dive_out_energy = None
+        if self.active_segment and self.active_segment.direction == "OUT":
             active_powers = [p for _, p in self.active_segment.samples if p is not None]
-            if active_powers:
-                all_max_powers.append(max(active_powers))
+            dive_out_power = max(active_powers) if active_powers else None
+            dive_out_energy = self.active_segment.energy_wh
+        elif cur_out:
+            dive_out_power = cur_out.get("max_power")
+            dive_out_energy = cur_out.get("energy_wh")
+        elif last_record and not self.active_segment and not self.current_dive:
+            # Show completed cycle metrics until a new cycle starts
+            dive_out_power = last_record.get("dive_out_max_power")
+            dive_out_energy = last_record.get("dive_out_energy")
 
-        max_power_one_dive = max(all_max_powers) if all_max_powers else None
+        # Max Power Consumed for One Dive
+        max_power_candidates = [p for p in (dive_in_power, dive_out_power) if p is not None]
+        max_power_one_dive = max(max_power_candidates) if max_power_candidates else None
 
-        # Energy calculations (Maximum energy in Wh consumed while diving in, ascending out, and for one complete dive)
-        in_energies = [d["dive_in_energy"] for d in self.history if d.get("dive_in_energy") is not None]
-        out_energies = [d["dive_out_energy"] for d in self.history if d.get("dive_out_energy") is not None]
-
-        if self.active_segment:
-            if self.active_segment.direction == "IN":
-                in_energies.append(self.active_segment.energy_wh)
-            else:
-                out_energies.append(self.active_segment.energy_wh)
-
-        max_in_energy = max(in_energies) if in_energies else None
-        max_out_energy = max(out_energies) if out_energies else None
-
-        all_total_energies = [d["total_energy"] for d in self.history if d.get("total_energy") is not None]
-        max_energy_one_dive = max(all_total_energies) if all_total_energies else None
+        # Max Energy Consumed for One Dive (sum of Dive In + Dive Out for complete dive, or ongoing sum)
+        energy_candidates = [e for e in (dive_in_energy, dive_out_energy) if e is not None]
+        max_energy_one_dive = sum(energy_candidates) if energy_candidates else None
 
         return {
             "total_dives": total_dives,
             "completed_dives": completed_dives,
             "is_active": self.active_segment is not None or self.current_dive is not None,
-            "power_dive_in": max_in_power,
-            "power_dive_out": max_out_power,
+            "power_dive_in": dive_in_power,
+            "power_dive_out": dive_out_power,
             "max_power_one_dive": max_power_one_dive,
-            "energy_dive_in": max_in_energy,
-            "energy_dive_out": max_out_energy,
+            "energy_dive_in": dive_in_energy,
+            "energy_dive_out": dive_out_energy,
             "max_energy_one_dive": max_energy_one_dive,
         }
