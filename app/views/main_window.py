@@ -136,11 +136,6 @@ class MainWindow(QMainWindow):
 
         center_column.addWidget(self.tab_widget, 1)
 
-        # Bottom Data Stream (RAW) Monitor (Moved here in place of Telemetry Graph)
-        self.raw_stream_panel = RawStreamPanel(self)
-        self.raw_stream_panel.setFixedHeight(150)
-        center_column.addWidget(self.raw_stream_panel, 0)
-
         content_layout.addLayout(center_column, 1)
 
         # --- RIGHT SIDEBAR (Width ~ 280px) ---
@@ -172,7 +167,7 @@ class MainWindow(QMainWindow):
 
         # Worker signals
         self.serial_worker.telemetry_received.connect(self._on_telemetry_received)
-        self.serial_worker.raw_line_received.connect(self.raw_stream_panel.append_raw_line)
+        self.serial_worker.raw_line_received.connect(self.settings_tab.raw_stream_panel.append_raw_line)
         self.serial_worker.stats_updated.connect(self._on_stats_updated)
         self.serial_worker.connection_changed.connect(self._on_connection_changed)
 

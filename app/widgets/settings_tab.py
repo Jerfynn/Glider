@@ -79,7 +79,11 @@ class SettingsTabWidget(QFrame):
         content_box.addLayout(path_row)
 
         layout.addLayout(content_box)
-        layout.addStretch()
+
+        # Embedded Data Stream (RAW) Terminal
+        from app.widgets.raw_stream_panel import RawStreamPanel
+        self.raw_stream_panel = RawStreamPanel(self)
+        layout.addWidget(self.raw_stream_panel, 1)
 
     def _on_browse_folder(self):
         """Opens native directory picker dialog."""
