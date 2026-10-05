@@ -27,6 +27,7 @@ from app.widgets.depth_viewer_tab import DepthViewerTabWidget
 from app.widgets.depth_control_tab import DepthControlTabWidget
 from app.widgets.motion_profile_tab import MotionProfileTabWidget
 from app.widgets.analytics_tab import AnalyticsTabWidget
+from app.widgets.dive_history_tab import DiveHistoryTabWidget
 from app.widgets.settings_tab import SettingsTabWidget
 
 
@@ -117,11 +118,15 @@ class MainWindow(QMainWindow):
         self.motion_profile_tab = MotionProfileTabWidget(self)
         self.tab_widget.addTab(self.motion_profile_tab, "CYCLE CONFIG")
 
-        # Tab 5: ANALYTICS (Dive Power & Energy Analytics)
+        # Tab 5: ANALYTICS (Current Cycle Dive Power & Energy)
         self.analytics_tab = AnalyticsTabWidget(self)
         self.tab_widget.addTab(self.analytics_tab, "ANALYTICS")
 
-        # Tab 6: SETTINGS
+        # Tab 6: DIVE HISTORY (Power & Energy Calculations from Cycle 1)
+        self.dive_history_tab = DiveHistoryTabWidget(self.analytics_tab.engine, self)
+        self.tab_widget.addTab(self.dive_history_tab, "DIVE HISTORY")
+
+        # Tab 7: SETTINGS
         self.settings_tab = SettingsTabWidget(logger=self.csv_logger, parent=self)
         self.tab_widget.addTab(self.settings_tab, "SETTINGS")
 
@@ -299,6 +304,9 @@ class MainWindow(QMainWindow):
             nose_ml=self.depth_viewer_tab.current_nose_ml,
             tail_l=self.depth_viewer_tab.current_tail_l
         )
+
+        # 8. Update Dive History Table (All Cycles From Cycle 1)
+        self.dive_history_tab.update_telemetry(packet)
 
     def closeEvent(self, event):
         """Clean shutdown of background worker thread and file loggers."""
