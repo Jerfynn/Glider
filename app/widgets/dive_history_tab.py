@@ -4,10 +4,14 @@ Presents a dedicated table and cycle history showing power calculations
 and energy consumption from Cycle #1 onwards across all completed and active dives.
 """
 
+import csv
+import os
+from datetime import datetime
+
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget,
-    QTableWidgetItem, QHeaderView, QPushButton
+    QTableWidgetItem, QHeaderView, QPushButton, QFileDialog, QMessageBox
 )
 
 from app.config import COLORS
@@ -48,6 +52,34 @@ class DiveHistoryTabWidget(QFrame):
         header.addWidget(title)
         header.addStretch()
 
+        # Export to CSV Button
+        self.btn_export = QPushButton("EXPORT TO CSV")
+        self.btn_export.setCursor(Qt.PointingHandCursor)
+        self.btn_export.setFixedHeight(28)
+        self.btn_export.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #FFFFFF;
+                border: 1px solid {COLORS['border']};
+                border-radius: 4px;
+                color: {COLORS['text_primary']};
+                font-size: 11px;
+                font-weight: 700;
+                padding: 4px 12px;
+                letter-spacing: 0.5px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['status_green_bg']};
+                border-color: {COLORS['status_green_border']};
+                color: {COLORS['status_green']};
+            }}
+            QPushButton:pressed {{
+                background-color: #BBF7D0;
+            }}
+        """)
+        self.btn_export.clicked.connect(self.export_to_csv)
+        header.addWidget(self.btn_export)
+
+        # Refresh Table Button
         self.btn_refresh = QPushButton("↻ REFRESH TABLE")
         self.btn_refresh.setCursor(Qt.PointingHandCursor)
         self.btn_refresh.setFixedHeight(28)
@@ -231,3 +263,50 @@ class DiveHistoryTabWidget(QFrame):
             f"Showing {len(history)} completed cycle(s)" +
             (f" + Cycle #{len(history) + 1} actively in progress." if has_active_row else ".")
         )
+
+    def export_to_csv(self):
+        """Exports the current dive cycle history table data to a CSV file."""
+        if self.table.rowCount() == 0:
+            QMessageBox.information(self, "Export to CSV", "No dive cycle data available to export yet.")
+            return
+
+        default_name = f"dive_power_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Dive Cycle Power & Energy History",
+            default_name,
+            "CSV Files (*.csv);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                
+                # Write header row
+                headers = []
+                for col in range(self.table.columnCount()):
+                    headers.append(self.table.horizontalHeaderItem(col).text())
+                writer.writerow(headers)
+
+                # Write data rows
+                for row in range(self.table.rowCount()):
+                    row_data = []
+                    for col in range(self.table.columnCount()):
+                        item = self.table.item(row, col)
+                        row_data.append(item.text() if item else "")
+                    writer.writerow(row_data)
+
+            QMessageBox.information(
+                self,
+                "Export Successful",
+                f"Dive cycle history successfully exported to:\n{os.path.basename(file_path)}"
+            )
+        except Exception as ex:
+            QMessageBox.critical(
+                self,
+                "Export Failed",
+                f"Could not export CSV file:\n{str(ex)}"
+            )
