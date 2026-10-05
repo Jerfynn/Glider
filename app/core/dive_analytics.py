@@ -95,6 +95,15 @@ class DiveAnalyticsEngine:
         self.last_power: Optional[float] = None
         self.total_energy_wh: float = 0.0
 
+    def reset(self):
+        """Resets all analytics history, active dive segments, and cumulative counters to 0."""
+        self.history.clear()
+        self.current_dive = None
+        self.active_segment = None
+        self.last_time = None
+        self.last_power = None
+        self.total_energy_wh = 0.0
+
     def is_neutral(self, pwm: int) -> bool:
         """Determines if motor PWM is within neutral deadband."""
         return abs(pwm - NEUTRAL_PWM) <= self.deadband

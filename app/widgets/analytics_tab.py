@@ -7,7 +7,7 @@ Clean White / Light Theme with high-contrast typography and industrial amber acc
 
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
-    QFrame, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel
+    QFrame, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton
 )
 
 from app.config import COLORS
@@ -32,7 +32,7 @@ class AnalyticsTabWidget(QFrame):
         root.setContentsMargins(24, 20, 24, 20)
         root.setSpacing(16)
 
-        # Header Title
+        # Header Title & Reset Button
         header = QHBoxLayout()
         header.setSpacing(8)
         accent = QFrame()
@@ -46,6 +46,34 @@ class AnalyticsTabWidget(QFrame):
         header.addWidget(accent)
         header.addWidget(title)
         header.addStretch()
+
+        # Reset Button
+        self.btn_reset = QPushButton("↺ RESET ANALYTICS")
+        self.btn_reset.setCursor(Qt.PointingHandCursor)
+        self.btn_reset.setFixedHeight(28)
+        self.btn_reset.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #FFFFFF;
+                border: 1px solid {COLORS['border']};
+                border-radius: 4px;
+                color: {COLORS['text_secondary']};
+                font-size: 11px;
+                font-weight: 700;
+                padding: 4px 12px;
+                letter-spacing: 0.5px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['status_red_bg']};
+                border-color: {COLORS['status_red_border']};
+                color: {COLORS['status_red']};
+            }}
+            QPushButton:pressed {{
+                background-color: #FEE2E2;
+            }}
+        """)
+        self.btn_reset.clicked.connect(self.reset_analytics)
+        header.addWidget(self.btn_reset)
+
         root.addLayout(header)
 
         # 1. DIVES SECTION
@@ -249,3 +277,8 @@ class AnalyticsTabWidget(QFrame):
         self.lbl_energy_in.setText(self._fmt(metrics["energy_dive_in"], " Wh"))
         self.lbl_energy_out.setText(self._fmt(metrics["energy_dive_out"], " Wh"))
         self.lbl_energy_max.setText(self._fmt(metrics["max_energy_one_dive"], " Wh"))
+
+    def reset_analytics(self):
+        """Clears all accumulated dive power and energy analytics and resets displays to zero."""
+        self.engine.reset()
+        self._refresh_ui()
